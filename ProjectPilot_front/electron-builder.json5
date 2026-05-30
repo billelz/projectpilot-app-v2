@@ -29,8 +29,12 @@
     "deleteAppDataOnUninstall": false
   },
   "linux": {
-    "target": ["AppImage"],
+    "target": ["AppImage", "snap"],
     "artifactName": "${productName}-Linux-${version}.${ext}",
     "extraResources": [{ "from": "backend/linux", "to": "backend" }]
+  },
+  "snap": {
+    "publish": null,
+    "confinement": "classic"
   }
 }

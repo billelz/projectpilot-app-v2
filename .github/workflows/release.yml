@@ -38,6 +38,9 @@ jobs:
           cp ProjectPilot/dist/projectpilot-backend ProjectPilot_front/backend/linux/
           chmod +x ProjectPilot_front/backend/linux/projectpilot-backend
 
+      - name: Install snapcraft
+        run: sudo snap install snapcraft --classic
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -54,6 +57,13 @@ jobs:
         with:
           name: linux-appimage
           path: ProjectPilot_front/release/**/*.AppImage
+          if-no-files-found: error
+
+      - name: Upload Linux Snap
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-snap
+          path: ProjectPilot_front/release/**/*.snap
           if-no-files-found: error
 
   build-windows:
@@ -101,11 +111,17 @@ jobs:
     needs: [build-linux, build-windows]
     runs-on: ubuntu-latest
     steps:
-      - name: Download Linux artifact
+      - name: Download Linux AppImage
         uses: actions/download-artifact@v4
         with:
           name: linux-appimage
           path: dist/linux
+
+      - name: Download Linux Snap
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-snap
+          path: dist/snap
 
       - name: Download Windows artifact
         uses: actions/download-artifact@v4
@@ -116,6 +132,7 @@ jobs:
       - name: Rename artifacts to stable filenames
         run: |
           find dist/linux  -name "*.AppImage" -exec mv {} dist/linux/ProjectPilot-Linux.AppImage \;
+          find dist/snap   -name "*.snap"     -exec mv {} dist/snap/ProjectPilot-Linux.snap \;
           find dist/windows -name "*.exe"     -exec mv {} dist/windows/ProjectPilot-Windows-Setup.exe \;
 
       - name: Create GitHub Release
@@ -125,4 +142,5 @@ jobs:
           generate_release_notes: true
           files: |
             dist/linux/ProjectPilot-Linux.AppImage
+            dist/snap/ProjectPilot-Linux.snap
             dist/windows/ProjectPilot-Windows-Setup.exe
