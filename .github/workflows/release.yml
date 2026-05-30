@@ -1,0 +1,121 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Build Python backend (Linux)
+        working-directory: ProjectPilot
+        run: |
+          pip install -r requirements.txt
+          pip install pyinstaller
+          pyinstaller --onefile --name projectpilot-backend main.py
+
+      - name: Stage backend binary
+        run: |
+          mkdir -p ProjectPilot_front/backend/linux
+          cp ProjectPilot/dist/projectpilot-backend ProjectPilot_front/backend/linux/
+          chmod +x ProjectPilot_front/backend/linux/projectpilot-backend
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build Electron app (Linux)
+        working-directory: ProjectPilot_front
+        run: |
+          npm install
+          npm run build
+
+      - name: Upload Linux AppImage
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-appimage
+          path: ProjectPilot_front/release/**/*.AppImage
+          if-no-files-found: error
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Build Python backend (Windows)
+        working-directory: ProjectPilot
+        run: |
+          pip install -r requirements.txt
+          pip install pyinstaller
+          pyinstaller --onefile --name projectpilot-backend main.py
+
+      - name: Stage backend binary
+        shell: bash
+        run: |
+          mkdir -p ProjectPilot_front/backend/windows
+          cp ProjectPilot/dist/projectpilot-backend.exe ProjectPilot_front/backend/windows/
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build Electron app (Windows)
+        working-directory: ProjectPilot_front
+        run: |
+          npm install
+          npm run build
+
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: ProjectPilot_front/release/**/*.exe
+          if-no-files-found: error
+
+  release:
+    needs: [build-linux, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-appimage
+          path: dist/linux
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-installer
+          path: dist/windows
+
+      - name: Rename artifacts to stable filenames
+        run: |
+          mv dist/linux/*.AppImage dist/linux/ProjectPilot-Linux.AppImage
+          mv dist/windows/*.exe    dist/windows/ProjectPilot-Windows-Setup.exe
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            dist/linux/ProjectPilot-Linux.AppImage
+            dist/windows/ProjectPilot-Windows-Setup.exe

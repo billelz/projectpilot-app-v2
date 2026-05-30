@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProjectPilot - Smart Desktop Application</title>
+    <link rel="icon" type="image/png" href="LogoOnly.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(180deg, #0a0a1a 0%, #0d1a2d 50%, #0a1525 100%);
+            min-height: 100vh;
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+
+        /* Header */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 50px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo img {
+            height: 40px;
+            width: auto;
+        }
+
+        .logo-text {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .social-icons {
+            display: flex;
+            gap: 20px;
+        }
+
+        .social-icons a {
+            color: #ffffff;
+            font-size: 1.3rem;
+            transition: color 0.3s ease, transform 0.3s ease;
+        }
+
+        .social-icons a:hover {
+            color: #4da6ff;
+            transform: scale(1.1);
+        }
+
+        /* Main Content */
+        main {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            padding: 40px 20px 0;
+            position: relative;
+        }
+
+        .title {
+            font-size: 4rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #4da6ff 0%, #66b3ff 50%, #3399ff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 25px;
+            text-shadow: 0 0 40px rgba(77, 166, 255, 0.3);
+        }
+
+        .description {
+            max-width: 750px;
+            font-size: 1.1rem;
+            line-height: 1.7;
+            color: #b8c5d6;
+            margin-bottom: 40px;
+        }
+
+        /* Buttons */
+        .buttons {
+            display: flex;
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+
+        .btn {
+            padding: 14px 40px;
+            font-size: 1rem;
+            font-weight: 500;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: transparent;
+            border: 2px solid #4da6ff;
+            color: #ffffff;
+        }
+
+        .btn-primary:hover {
+            background: #4da6ff;
+            box-shadow: 0 0 25px rgba(77, 166, 255, 0.5);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border: 2px solid #ffffff;
+            color: #ffffff;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 25px rgba(255, 255, 255, 0.2);
+        }
+
+        /* Hero Image */
+        .hero-image {
+            position: relative;
+            width: 100%;
+            max-width: 1170px;
+        }
+
+        .hero-image img {
+            width: 100%;
+            height: auto;
+            object-fit: contain;
+        }
+
+        /* Floating Orbs */
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #255BFC 0%, #66d9ff 100%);
+            box-shadow: 0 0 30px rgba(77, 166, 255, 0.6);
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .orb-1 {
+            width: 20px;
+            height: 20px;
+            top: 20%;
+            left: 15%;
+            animation-delay: 0s;
+        }
+
+        .orb-2 {
+            width: 15px;
+            height: 15px;
+            top: 30%;
+            right: 10%;
+            animation-delay: 1s;
+        }
+
+        .orb-3 {
+            width: 12px;
+            height: 12px;
+            top: 45%;
+            left: 5%;
+            animation-delay: 2s;
+        }
+
+        .orb-4 {
+            width: 18px;
+            height: 18px;
+            top: 50%;
+            right: 5%;
+            animation-delay: 3s;
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0) scale(1);
+            }
+            50% {
+                transform: translateY(-20px) scale(1.1);
+            }
+        }
+
+        /* Glow Effect */
+        .glow-effect {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60%;
+            height: 150px;
+            background: radial-gradient(ellipse at center, rgba(77, 166, 255, 0.4) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            header {
+                padding: 15px 20px;
+            }
+
+            .title {
+                font-size: 2.5rem;
+            }
+
+            .description {
+                font-size: 1rem;
+                padding: 0 15px;
+            }
+
+            .buttons {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .btn {
+                padding: 12px 35px;
+            }
+
+            .social-icons {
+                gap: 15px;
+            }
+
+            .social-icons a {
+                font-size: 1.1rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .title {
+                font-size: 2rem;
+            }
+
+            .logo-text {
+                font-size: 1.1rem;
+            }
+        }
+
+        /* Download Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(6px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: linear-gradient(135deg, #0d1a2d 0%, #0a1525 100%);
+            border: 1px solid rgba(77, 166, 255, 0.25);
+            border-radius: 20px;
+            padding: 40px;
+            width: 90%;
+            max-width: 520px;
+            position: relative;
+            box-shadow: 0 0 60px rgba(77, 166, 255, 0.15);
+            animation: modalIn 0.25s ease;
+        }
+
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.92) translateY(20px); }
+            to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 16px;
+            right: 20px;
+            background: none;
+            border: none;
+            color: #7a9ab5;
+            font-size: 1.4rem;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .modal-close:hover { color: #ffffff; }
+
+        .modal h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .modal p {
+            color: #7a9ab5;
+            text-align: center;
+            margin-bottom: 32px;
+            font-size: 0.95rem;
+        }
+
+        .os-cards {
+            display: flex;
+            gap: 20px;
+        }
+
+        .os-card {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 14px;
+            padding: 28px 20px;
+            border: 1.5px solid rgba(77, 166, 255, 0.2);
+            border-radius: 14px;
+            background: rgba(77, 166, 255, 0.04);
+            cursor: pointer;
+            text-decoration: none;
+            color: #ffffff;
+            transition: all 0.25s ease;
+        }
+
+        .os-card:hover {
+            border-color: #4da6ff;
+            background: rgba(77, 166, 255, 0.1);
+            box-shadow: 0 0 30px rgba(77, 166, 255, 0.2);
+            transform: translateY(-3px);
+        }
+
+        .os-card i {
+            font-size: 2.8rem;
+            color: #4da6ff;
+        }
+
+        .os-card .os-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .os-card .os-detail {
+            font-size: 0.8rem;
+            color: #7a9ab5;
+        }
+
+        @media (max-width: 480px) {
+            .os-cards { flex-direction: column; }
+            .modal { padding: 28px 20px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Floating Orbs -->
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+    <div class="orb orb-4"></div>
+
+    <!-- Header -->
+    <header>
+        <div class="logo">
+            <img src="Logo.png" alt="ProjectPilot Logo">
+        </div>
+        <div class="social-icons">
+            <a href="#" target="_blank" title="GitHub"><i class="fab fa-github"></i></a>
+            <a href="#" target="_blank" title="Discord"><i class="fab fa-discord"></i></a>
+            <a href="#" target="_blank" title="Reddit"><i class="fab fa-reddit"></i></a>
+            <a href="#" target="_blank" title="Twitter"><i class="fab fa-twitter"></i></a>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main>
+        <h1 class="title">ProjectPilot</h1>
+        <p class="description">
+            ProjectPilot is a smart desktop application designed to simplify running and managing 
+            development projects. It allows users to import any project and automatically installs all 
+            required environments and dependencies, regardless of the programming language
+        </p>
+        
+        <div class="buttons">
+            <button onclick="openDownloadModal()" class="btn btn-primary">Download</button>
+            <a href="#" class="btn btn-secondary">ContactUs</a>
+        </div>
+
+        <!-- Hero Image -->
+        <div class="hero-image">
+            <img src="Backgorund image.png" alt="ProjectPilot Robots">
+            <div class="glow-effect"></div>
+        </div>
+    </main>
+
+    <!-- Download OS Modal -->
+    <div class="modal-overlay" id="downloadModal" onclick="handleOverlayClick(event)">
+        <div class="modal">
+            <button class="modal-close" onclick="closeDownloadModal()" aria-label="Close">&times;</button>
+            <h2>Download ProjectPilot</h2>
+            <p>Choose your operating system to download the installer.</p>
+            <div class="os-cards">
+                <a href="https://github.com/billelz/projectpilot/releases/latest/download/ProjectPilot-Linux.AppImage"
+                   class="os-card" download>
+                    <i class="fab fa-linux"></i>
+                    <span class="os-name">Linux</span>
+                    <span class="os-detail">AppImage</span>
+                </a>
+                <a href="https://github.com/billelz/projectpilot/releases/latest/download/ProjectPilot-Windows-Setup.exe"
+                   class="os-card" download>
+                    <i class="fab fa-windows"></i>
+                    <span class="os-name">Windows</span>
+                    <span class="os-detail">NSIS Installer (.exe)</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openDownloadModal() {
+            document.getElementById('downloadModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeDownloadModal() {
+            document.getElementById('downloadModal').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        function handleOverlayClick(e) {
+            if (e.target === document.getElementById('downloadModal')) {
+                closeDownloadModal();
+            }
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeDownloadModal();
+        });
+    </script>
+</body>
+</html>
