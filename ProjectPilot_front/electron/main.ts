@@ -43,11 +43,14 @@ function startBackend() {
     backendExecutable = path.join(process.resourcesPath, 'backend', binaryName);
     backendCwd = path.join(process.resourcesPath, 'backend');
   } else {
-    // In development: spawn Python directly from the source directory
-    const pythonCmd = os.platform() === 'win32' ? 'python' : 'python3';
-    backendExecutable = pythonCmd;
+    // In development: use the venv Python so uvicorn and deps are available
+    backendCwd = path.join(process.env.APP_ROOT!, '..', 'ProjectPilot');
+    const isWin = os.platform() === 'win32';
+    const venvPython = isWin
+      ? path.join(backendCwd, '.venv', 'Scripts', 'python.exe')
+      : path.join(backendCwd, '.venv', 'bin', 'python3');
+    backendExecutable = venvPython;
     backendArgs = ['-m', 'uvicorn', 'main:app', '--host', '127.0.0.1', '--port', '8000'];
-    backendCwd = path.join(process.env.APP_ROOT, '..', 'ProjectPilot');
   }
 
   backendProcess = spawn(backendExecutable, backendArgs, {
@@ -83,7 +86,7 @@ function createWindow() {
     minWidth: 1400,      
     minHeight: 800,
     show: false,       
-    icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
+    icon: path.join(process.env.VITE_PUBLIC, 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
     },
