@@ -95,6 +95,24 @@ def extract_ports_from_compose(files: List[str]) -> List[str]:
         except Exception:
             continue
     return list(set(urls))
+def extract_ports_from_dockerfile(files: List[str]) -> List[str]:
+    urls = []
+
+    for file in files:
+        try:
+            content = Path(file).read_text()
+
+            exposes = re.findall(r"EXPOSE\s+([0-9\s]+)", content, re.IGNORECASE)
+
+            for exp in exposes:
+                for port in exp.split():
+                    if port.isdigit():
+                        urls.append(f"container: http://localhost:{port}")
+
+        except Exception:
+            continue
+
+    return list(set(urls))
 def order_compose_files(files: List[str]) -> List[str]:
     base, override, others = [], [], []
     for f in files:
@@ -108,14 +126,33 @@ def order_compose_files(files: List[str]) -> List[str]:
     return base + others + override
 def safe_parse_ai_json(output: str, fallback: List[str]) -> List[str]:
     try:
-        # Try to parse as JSON
         parsed = json.loads(output)
-        # Accept both lists and dicts
         if isinstance(parsed, (list, dict)):
             return parsed
     except json.JSONDecodeError:
-        # If not valid JSON, return fallback
         pass
     except Exception as e:
         print(f"[DEBUG] Error parsing JSON: {e}")
     return fallback
+def order_dockerfiles(files: List[str]) -> List[str]:
+        priority = [
+            "dockerfile",
+            "dockerfile.prod",
+            "dockerfile.production",
+            "dockerfile.dev",
+            "dockerfile.test",
+            "dockerfile.staging"
+        ]
+
+        ordered = []
+        others = []
+
+        for f in files:
+            name = Path(f).name.lower()
+
+            if name in priority:
+                ordered.append(f)
+            else:
+                others.append(f)
+
+        return ordered + others

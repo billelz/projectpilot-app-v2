@@ -1,7 +1,7 @@
 from pathlib import Path
 from groq import Groq
 from project_analyzer.models import ProjectInfo
-from .utils import get_system_info,safe_parse_ai_json, detect_compose_command,docker_exists,order_compose_files,extract_ports_from_compose
+from .utils import get_system_info,safe_parse_ai_json, detect_compose_command,docker_exists,order_compose_files,extract_ports_from_compose,extract_ports_from_dockerfile,order_dockerfiles  
 from typing import Dict, Any, List
 from mcp.core import run_agent
 from dotenv import load_dotenv
@@ -120,7 +120,7 @@ def docker_compose_install(info: ProjectInfo,mcp_client) -> Dict[str, Any]:
     ]
     valid_files = [f for f in compose_files if Path(f).exists()]
     if not valid_files:
-        return dockerfile_install_agent(info,mcp_client)
+        return dockerfile_install_agent(info)
     selected_files = select_compose_files(valid_files)
     selected_files = order_compose_files(selected_files)
     compose_cmd = detect_compose_command()
@@ -146,92 +146,46 @@ def docker_compose_install(info: ProjectInfo,mcp_client) -> Dict[str, Any]:
         "notes": notes,
         "access_urls": access_urls  
     }
-def dockerfile_install_agent(info: ProjectInfo, mcp_client) -> Dict[str, Any]:
+def dockerfile_install_agent(info: ProjectInfo) -> Dict[str, Any]:
     dockerfiles = [
         f for f in (info.docker_path or [])
-        if Path(f).name == "Dockerfile" and Path(f).exists()
+        if Path(f).name.lower().startswith("dockerfile")
+        and Path(f).exists()
     ]
     if not dockerfiles:
-        return {"type": "dockerfile", "error": "No Dockerfiles found"}
-    dockerfiles_block = "\n".join(f"- {str(Path(p).resolve())}" for p in dockerfiles)
-
-    user_input = f"""
-ROLE: You are a Dockerfile run-command extractor.
-
-CONTEXT
-- OS: {user_os}
-- Commands will be executed from an arbitrary working directory (e.g. /home/usr), NOT from the project folder.
-- ALLOWED DOCKERFILES (ONLY these paths may be read; do not read any other path):
-{dockerfiles_block}
-
-TASK
-Choose the SINGLE best Dockerfile from the allowed list and return the minimal executable commands to:
-1) build an image
-2) run ONE container successfully
-
-EXPLORATION RULES (STRICT)
-- You MUST inspect Dockerfiles only.
-- You MAY call read_file, but ONLY for paths in the ALLOWED DOCKERFILES list.
-- You MUST NOT call list_directory.
-- You MUST NOT read README files, .env, package.json, requirements.txt, LICENSE, or any other file.
-- If you cannot determine something (ports), omit it rather than reading other files.
-
-COMMAND RULES (STRICT)
-- Output ONLY executable commands.
-- Return exactly 2 commands in the "commands" array:
-  - commands[0] MUST be a docker build command
-  - commands[1] MUST be a docker run command (and it must be the last command)
-- Commands MUST be unique (no duplicates).
-- Do NOT output alternatives.
-- Do NOT output prose, markdown, comments, or extra keys.
-- Do NOT run the container in detached mode (do NOT use the -d flag). The container MUST run in the foreground.
-
-PATH RULES (CRITICAL)
-- ALL paths in commands MUST be absolute.
-- Do NOT use "." anywhere.
-- Do NOT use "Dockerfile" as a relative path.
-- Build context MUST be the directory that contains the chosen Dockerfile:
-  context_dir = dirname(<absolute_dockerfile_path>)
-- Build command MUST follow this exact template:
-  docker build -t <image_name> -f "<absolute_dockerfile_path>" "<absolute_context_dir>"
-
-IMAGE NAME RULE
-- image_name must be lowercase, no spaces, derived from the chosen Dockerfile directory name.
-
-PORT RULES (CRITICAL: AVOID HOST PORT CONFLICTS)
-- If the chosen Dockerfile contains EXPOSE <port>, publish it using EPHEMERAL host port mapping:
-  Use: -p <port>
-  Do NOT use: -p <host>:<port>
-- If there is no EXPOSE instruction, do NOT add any -p option.
-
-ENV RULES
-- Do NOT use --env-file.
-
-FINAL SELF-CHECK (MUST DO BEFORE RETURNING JSON)
-- Ensure the build command uses absolute Dockerfile path and absolute context directory (no ".").
-- Ensure the run command follows the PORT RULES above (ephemeral mapping, not host:container).
-- If any rule is violated, rewrite the commands to comply.
-
-OUTPUT JSON (EXACT SHAPE)
-{{
-  "commands": [
-    "<docker build ...>",
-    "<docker run ...>"
-  ]
-}}
-VALIDATION (MUST PASS)
-- len(commands) == 2
-- commands[0] starts with "docker build"
-- commands[1] starts with "docker run"
-- commands[0] != commands[1]
-- No extra keys in the output JSON
-"""
-    result = run_agent(
-        llm_client=client,
-        mcp_client=mcp_client,
-        user_input=user_input
-    )
-    return result
+        return {
+            "type": "dockerfile",
+            "error": "No Dockerfiles found"
+        }
+    selected_files = order_dockerfiles(dockerfiles)
+    selected_files = [str(Path(f).resolve()) for f in selected_files]
+    working_dir = str(Path(selected_files[0]).parent)
+    project_name = Path(working_dir).name.lower().replace(" ", "_")
+    image_tag = f"{project_name}:latest"
+    container_name = f"{project_name}_container"
+    ports = extract_ports_from_dockerfile(selected_files)
+    if not ports:
+        ports = ["3000"]
+    port = ports[0]
+    port_flags = f"-p {port}:{port}"
+    commands = [
+        f'docker build -t {image_tag} -f "{selected_files[0]}" "{working_dir}"',
+        f'docker run -d --name {container_name} {port_flags} {image_tag}'
+    ]
+    stop_command = f'docker stop {container_name} && docker rm {container_name}'
+    notes = []
+    access_urls = [
+        f"{project_name}: http://localhost:{port}"
+    ]
+    return {
+        "type": "dockerfile",
+        "files": selected_files,
+        "working_dir": working_dir,
+        "commands": commands,
+        "stop_command": stop_command,
+        "notes": notes,
+        "access_urls": access_urls
+    }
 def general_install_guide(info: ProjectInfo, mcp_client) -> Dict[str, Any]:
     user_input = f"""
 ROLE: You are an installation-command extractor.
