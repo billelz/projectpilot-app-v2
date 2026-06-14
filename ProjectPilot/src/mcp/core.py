@@ -18,10 +18,10 @@ class MCPClient:
             text=True,
             bufsize=1
         )
-
+  
     def send(self, payload: dict):
-        self.process.stdin.write(json.dumps(payload) + "\n")
-        self.process.stdin.flush()
+            self.process.stdin.write(json.dumps(payload) + "\n")
+            self.process.stdin.flush()
     def receive(self):
         while True:
             line = self.process.stdout.readline()
@@ -37,24 +37,68 @@ class MCPClient:
                 "arguments": arguments
             }
         }
+
         self.send(request)
         return self.receive()
-
-    def read_file(self, path: str) -> str:
-        result = self.call_tool("read_file", {"path": path})
-        return self._extract_text(result)
-
-    def list_directory(self, path: str) -> list:
-        result = self.call_tool("list_directory", {"path": path})
-        return self._extract_text(result)
-
-    def batch_read(self, paths: list) -> dict:
-        return {
-            p: self.read_file(p) for p in paths
+    def is_alive(self):
+        return self.process.poll() is None
+    def init(self):
+        init_msg = {
+            "method": "initialize",
+            "params": {}
         }
 
-    def _extract_text(self, tool_result):
-        content = tool_result.get("result", {}).get("content", [])
-        if content:
-            return content[0].get("text", "")
-        return ""
+        self.send(init_msg)
+TOOLS = """
+        You are an AI agent with access to tools.
+
+        TOOLS AVAILABLE:
+        - read_file: {"path": "..."}
+        - list_directory: {"path": "..."}
+
+        RULES:
+        If you need a tool, respond ONLY in JSON:
+
+        {
+        "tool": "tool_name",
+        "arguments": {}
+        }
+
+        If you are done, respond:
+
+        {
+        "final": "your answer"
+        }
+        """
+def run_agent(llm_client, mcp_client, user_input: str):
+        messages = [
+            {"role": "system", "content": TOOLS},
+            {"role": "user", "content": user_input}
+        ]
+        for _ in range(12):  
+            response = llm_client.chat.completions.create(
+                model="llama-3.1-8b-instant",
+                messages=messages,
+                temperature=0.2
+            )
+            content = response.choices[0].message.content
+            print("\n[LLM]\n", content)
+            try:
+                data = json.loads(content)
+            except Exception:
+                return f"Invalid LLM output: {content}"
+            if "tool" in data:
+                tool_name = data["tool"]
+                args = data.get("arguments", {})
+                print(f"\n[TOOL CALL] {tool_name} {args}")
+                tool_result = mcp_client.call_tool(tool_name, args)
+                tool_text = tool_result.get("result", {}).get("content", [])
+                if tool_text:
+                    tool_text = tool_text[0].get("text", "")
+                else:
+                    tool_text = str(tool_result)
+                messages.append({"role": "assistant", "content": content})
+                messages.append({"role": "user", "content": f"Tool result:\n{tool_text}"})
+            elif "final" in data:
+                return data["final"]
+        return "Agent stopped (too many steps)"
