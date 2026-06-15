@@ -187,24 +187,30 @@ def dockerfile_install_agent(info: ProjectInfo) -> Dict[str, Any]:
         "access_urls": access_urls
     }
 def general_install_guide(info: ProjectInfo, mcp_client) -> Dict[str, Any]:
+    allowed_files = info.dependency_files
     user_input = f"""
 ROLE: You are an installation-command extractor.
 
 CONTEXT
 - Project path: {info.path}
 - Operating system: {user_os}
+- Project type: {info.project_type} (confidence: {info.confidence:.0%})
+- Frameworks: {", ".join(info.frameworks) if info.frameworks else "None"}
+- Stack summary: {info.stack_summary}
+
+FILES TO READ
+Read ONLY these files to determine install/run commands (do not list directories or explore further):
+{chr(10).join(f"- {os.path.join(info.path, f)}" for f in info.dependency_files) if info.dependency_files else "- (none listed, infer minimal exploration from project type)"}
+
+DO NOT READ
+- README files, docs/, lock files (package-lock.json, yarn.lock, poetry.lock, etc.), or any file not listed above.
 
 GOAL
 Output the minimal set of shell commands to install dependencies and run the project successfully.
 
-EXPLORATION REQUIREMENTS
-- You MUST inspect the repository files to decide the correct commands.
-- Prefer the canonical workflow documented by the project (README, docs) if it matches the code.
-- If documentation is missing/outdated, infer from config files.
-
 DECISION RULES (pick ONE best method)
 - Do NOT output alternatives.
-- Do NOT output OS package manager commands (apt/brew/choco) unless the project explicitly requires them in docs AND they are essential.
+- Do NOT output OS package manager commands (apt/brew/choco) unless explicitly required AND essential.
 - Do NOT include "cd ..." unless required (assume commands run from the project root at {info.path}).
 
 COMMAND RULES
@@ -214,13 +220,14 @@ COMMAND RULES
   2) exactly ONE run command (the best default for local development; if none, use the primary production start command)
 - All entries MUST be unique (no duplicates, even if they would be valid).
 - Do NOT include comments, prefixes, prompt symbols, code fences, markdown, explanations, or extra keys.
--
+
 FORBIDDEN COMMAND TYPES
 - Do NOT include publish/package/release commands.
 - Do NOT include deployment commands.
 - Do NOT include containerization commands.
 - Do NOT include build-only commands unless required before running.
 - Prefer local development execution commands.
+
 OUTPUT FORMAT (MUST MATCH EXACTLY)
 Return ONLY valid JSON with this exact shape:
 
@@ -239,11 +246,11 @@ VALIDATION
     result = run_agent(
         llm_client=client,
         mcp_client=mcp_client,
-        user_input=user_input
+        user_input=user_input,
+        allowed_files=allowed_files
     )
-
+    print("[INSTALL GUIDE RESULT]", result)
     return result
-
 def fix_setup_error(failed_command: str, exit_code: int, error_message: str = "", project_path: str = "") -> Dict[str, Any]:
     print("\n" + "="*80)
     print("[DEBUG] fix_setup_error() called")

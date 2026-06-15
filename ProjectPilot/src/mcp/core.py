@@ -1,104 +1,135 @@
 import subprocess
 import json
 
+MAX_TOOL_RESULT_CHARS = 1500   # hard cap per tool result
+MAX_HISTORY_MESSAGES = 6        # keep only the last N messages (sliding window)
+
+
 class MCPClient:
     def __init__(self, project_path: str):
         self.project_path = project_path
-
         self.process = subprocess.Popen(
-            [
-                "npx",
-                "-y",
-                "@modelcontextprotocol/server-filesystem",
-                project_path
-            ],
+            ["npx", "-y", "@modelcontextprotocol/server-filesystem", project_path],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
             bufsize=1
         )
-  
+
     def send(self, payload: dict):
-            self.process.stdin.write(json.dumps(payload) + "\n")
-            self.process.stdin.flush()
+        self.process.stdin.write(json.dumps(payload) + "\n")
+        self.process.stdin.flush()
+
     def receive(self):
         while True:
             line = self.process.stdout.readline()
             if line.strip():
                 return json.loads(line)
+
     def call_tool(self, name: str, arguments: dict):
         request = {
             "jsonrpc": "2.0",
             "id": 1,
             "method": "tools/call",
-            "params": {
-                "name": name,
-                "arguments": arguments
-            }
+            "params": {"name": name, "arguments": arguments}
         }
-
         self.send(request)
         return self.receive()
+
     def is_alive(self):
         return self.process.poll() is None
+
     def init(self):
-        init_msg = {
+        self.send({
+            "jsonrpc": "2.0",
+            "id": 0,
             "method": "initialize",
+            "params": {
+                "protocolVersion": "2024-11-05",
+                "capabilities": {},
+                "clientInfo": {"name": "projectpilot", "version": "1.0"}
+            }
+        })
+        self.receive()  # consume the initialize response
+        # MCP requires sending "initialized" notification after init response
+        self.send({
+            "jsonrpc": "2.0",
+            "method": "notifications/initialized",
             "params": {}
-        }
+        })
 
-        self.send(init_msg)
-TOOLS = """
-        You are an AI agent with access to tools.
 
-        TOOLS AVAILABLE:
-        - read_file: {"path": "..."}
-        - list_directory: {"path": "..."}
+# Only allow read_file, and only on a pre-approved list of paths.
+# This is set per-call by general_install_guide, not hardcoded.
+TOOLS_TEMPLATE = """
+You are an AI agent with access to ONE tool: read_file.
 
-        RULES:
-        If you need a tool, respond ONLY in JSON:
+ALLOWED FILES (you may ONLY read these — nothing else exists to you):
+{allowed_files}
 
-        {
-        "tool": "tool_name",
-        "arguments": {}
-        }
+To read a file, respond ONLY with JSON:
+{{"tool": "read_file", "arguments": {{"path": "<one of the allowed files above>"}}}}
 
-        If you are done, respond:
+When you have enough information, respond ONLY with JSON:
+{{"final": "your answer"}}
 
-        {
-        "final": "your answer"
-        }
-        """
-def run_agent(llm_client, mcp_client, user_input: str):
-        messages = [
-            {"role": "system", "content": TOOLS},
-            {"role": "user", "content": user_input}
-        ]
-        for _ in range(12):  
+Do not call read_file more than once per file. Do not ask for files not in the list.
+"""
+
+
+def run_agent(llm_client, mcp_client, user_input: str, allowed_files: list[str]):
+    system_prompt = TOOLS_TEMPLATE.format(allowed_files="\n".join(f"- {f}" for f in allowed_files))
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_input}
+    ]
+
+    already_read = set()
+
+    for _ in range(6):  # fewer iterations needed now
             response = llm_client.chat.completions.create(
                 model="llama-3.1-8b-instant",
                 messages=messages,
                 temperature=0.2
             )
             content = response.choices[0].message.content
-            print("\n[LLM]\n", content)
+            print(f"[LLM RAW OUTPUT]: {content!r}")
+
             try:
                 data = json.loads(content)
             except Exception:
                 return f"Invalid LLM output: {content}"
+
             if "tool" in data:
                 tool_name = data["tool"]
                 args = data.get("arguments", {})
-                print(f"\n[TOOL CALL] {tool_name} {args}")
-                tool_result = mcp_client.call_tool(tool_name, args)
-                tool_text = tool_result.get("result", {}).get("content", [])
-                if tool_text:
-                    tool_text = tool_text[0].get("text", "")
+                path = args.get("path", "")
+
+                # Enforce allowlist
+                if tool_name != "read_file" or path not in allowed_files:
+                    tool_text = "Error: file not allowed or tool not available."
+                elif path in already_read:
+                    tool_text = "Error: already read this file."
                 else:
-                    tool_text = str(tool_result)
+                    tool_result = mcp_client.call_tool(tool_name, args)
+                    raw = tool_result.get("result", {}).get("content", [])
+                    tool_text = raw[0].get("text", "") if raw else str(tool_result)
+                    tool_text = tool_text[:MAX_TOOL_RESULT_CHARS]  # hard cap
+                    already_read.add(path)
+
                 messages.append({"role": "assistant", "content": content})
                 messages.append({"role": "user", "content": f"Tool result:\n{tool_text}"})
+
+                # Sliding window: keep system + user goal + last N exchanges
+                if len(messages) > MAX_HISTORY_MESSAGES:
+                    messages = [messages[0], messages[1]] + messages[-(MAX_HISTORY_MESSAGES - 2):]
+
             elif "final" in data:
                 return data["final"]
-        return "Agent stopped (too many steps)"
+
+            else:
+                # Model returned a final-shaped JSON directly (e.g. {"commands": [...]})
+                return data
+
+    return "Agent stopped (too many steps)"
