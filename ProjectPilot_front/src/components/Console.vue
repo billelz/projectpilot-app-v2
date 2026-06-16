@@ -198,6 +198,7 @@ displayAnalysisResult(response) {
         commands = response.install.result.commands;
       }      
       if (commands) {
+        this.store.setStatus("SETTING")
         this.commandsQueue = commands;
         this.currentCommandIndex = 0;
         setTimeout(() => this.showNextCommand(), 500);
@@ -217,10 +218,15 @@ showNextCommand() {
   }
 },
 handleCommandConfirm() {
-  this.showCommandModal = false;  
+  this.showCommandModal = false;
+  const i = 1;
+  if ( i == 1) {
+    this.store.setStatus("running")  
+  }
   window.ipcRenderer.send('execute-command', this.pendingCommand, this.store.selectedFolder);
 },
 handleCommandDeny() {
+  this.store.setStatus("idle")  
   this.terminal.writeln(`\x1b[31m✗ Permission Denied:\x1b[0m ${this.pendingCommand}`);
   this.terminal.writeln('');
   this.showCommandModal = false;

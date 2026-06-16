@@ -19,6 +19,7 @@ export default {
           this.selectedFolder = folderPath;
           this.store.setSelectedFolder(folderPath);
           this.showError = false;
+          this.store.setStatus("IMPORTING")
         } 
       } catch (error) {
         console.error('Error selecting folder:', error);
@@ -30,7 +31,6 @@ export default {
         return;
       }
       this.showError = false;
-      this.store.setStatus('running');
       try {
         const response = await window.ipcRenderer.invoke(
           'analyze-project',
@@ -39,7 +39,6 @@ export default {
         this.store.setAnalysisResult(response);
       } catch (error) {
         this.store.setError(error.message);
-        this.store.setStatus('idle');
       }
     },
    stopProject() {
@@ -51,11 +50,32 @@ export default {
     window.ipcRenderer.send('run-stop-command', null);
   }
   this.store.setStatus('idle');
-}
+},
+    // Returns 'completed' | 'active' | 'pending' for a given step number (1-4),
+    // based on how far along the overall status order we are.
+    // isLast: the final step has no "in progress" state of its own —
+    // reaching it means everything is done.
+    stepState(stepIndex, isLast = false) {
+      if (isLast) {
+        return this.currentStepIndex >= stepIndex ? 'completed' : 'pending';
+      }
+      if (this.currentStepIndex > stepIndex) return 'completed';
+      if (this.currentStepIndex === stepIndex) return 'active';
+      return 'pending';
+    }
   },
   computed: {
     isRunning() {
-      return this.store.projectStatus === 'running';
+      const status = (this.store.projectStatus || '').toLowerCase();
+      return status === 'done';
+    },
+    // Order of statuses, lowercase, so comparisons are case-insensitive
+    // regardless of how setStatus() was called ('IMPORTING' vs 'running' etc.)
+    currentStepIndex() {
+      const order = ['idle', 'importing', 'setting', 'running', 'done'];
+      const status = (this.store.projectStatus || '').toLowerCase();
+      const idx = order.indexOf(status);
+      return idx === -1 ? 0 : idx;
     }
   }
 };
@@ -77,7 +97,7 @@ export default {
         class="input"
         :class="{ 'input-error': showError }"
       >
-      <button class="btn-action" @click="selectFolder">Browse</button>
+      <button class="btn-action" @click="selectFolder" :disabled="isRunning">Browse</button>
       <button
         class="btn-action"
         @click="runProject"
@@ -93,41 +113,64 @@ export default {
   <div class="stepper-content-wrapper">
     <div class="stepper-wrapper">
       <div class="stepper-item">
-        <div class="stepper-circle stepper-completed">
-          <svg viewBox="0 0 16 16" fill="currentColor" height="16" width="16" xmlns="http://www.w3.org/2000/svg">
+        <div :class="['stepper-circle', 'stepper-' + stepState(1)]">
+          <div v-if="stepState(1) === 'completed'">
+            <svg viewBox="0 0 16 16" fill="currentColor" height="16" width="16" xmlns="http://www.w3.org/2000/svg">
             <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425z"></path>
-          </svg>
+            </svg>
+          </div>
+          <div v-else>
+              1
+          </div>
         </div>
         <div class="stepper-label">Importing</div>
-        <div class="stepper-line completed"></div>
+        <div :class="['stepper-line', { completed: stepState(1) === 'completed' }]"></div>
       </div>
 
       <div class="stepper-item">
-        <div class="stepper-circle stepper-completed">
-          <svg viewBox="0 0 16 16" fill="currentColor" height="16" width="16" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425z"></path>
-          </svg>
+        <div :class="['stepper-circle', 'stepper-' + stepState(2)]">
+          <div v-if="stepState(2) === 'completed'">
+            <svg viewBox="0 0 16 16" fill="currentColor" height="16" width="16" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425z"></path>
+            </svg>
+          </div>
+          <div v-else>
+              2
+          </div>
         </div>
         <div class="stepper-label">Setting up tools</div>
-        <div class="stepper-line completed"></div>
+        <div :class="['stepper-line', { completed: stepState(2) === 'completed' }]"></div>
       </div>
 
       <div class="stepper-item">
-        <div class="stepper-circle stepper-active">
-          <span>3</span>
+        <div :class="['stepper-circle', 'stepper-' + stepState(3)]">
+          <div v-if="stepState(3) === 'completed'">
+            <svg viewBox="0 0 16 16" fill="currentColor" height="16" width="16" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425z"></path>
+            </svg>
+          </div>
+          <div v-else>
+              3
+          </div>
         </div>
         <div class="stepper-label">Running</div>
-        <div class="stepper-line"></div>
+        <div :class="['stepper-line', { completed: stepState(3) === 'completed' }]"></div>
       </div>
 
       <div class="stepper-item">
-        <div class="stepper-circle stepper-pending">
-          <span>4</span>
+        <div :class="['stepper-circle', 'stepper-' + stepState(4, true)]">
+          <div v-if="stepState(4, true) === 'completed'">
+            <svg viewBox="0 0 16 16" fill="currentColor" height="16" width="16" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425z"></path>
+            </svg>
+          </div>
+          <div v-else>
+              4
+          </div>
         </div>
         <div class="stepper-label">Runned</div>
       </div>
     </div>
-
     <button
       class="btn-stop"
       :class="{ 'btn-stop-active': isRunning }"

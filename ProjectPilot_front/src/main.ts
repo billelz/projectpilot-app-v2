@@ -1,14 +1,15 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import { createVfm } from 'vue-final-modal'
-import './style.css'
-import App  from './App.vue'
+import App from './App.vue'
+import { useProjectStore } from './stores/projectStore'
+
 const app = createApp(App)
 const pinia = createPinia()
-app.use(createVfm())  
 app.use(pinia)
-createApp(App).mount('#app').$nextTick(() => {
-  window.ipcRenderer.on('main-process-message', (_event, message) => {
-    console.log(message)
-  })
+
+const store = useProjectStore()
+window.ipcRenderer.on('status-update', (_event, status) => {
+  store.setStatus(status)
 })
+
+app.mount('#app')

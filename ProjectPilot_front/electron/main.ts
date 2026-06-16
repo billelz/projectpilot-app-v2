@@ -29,6 +29,7 @@ let win: BrowserWindow | null
 let ptyProcess: pty.IPty | null = null;
 let backendProcess: ChildProcess | null = null;
 let jobPty: pty.IPty | null = null;
+const containerIdRegex = /^[a-f0-9]{12,64}$/;
 function startBackend() {
   const isPackaged = app.isPackaged;
 
@@ -195,6 +196,15 @@ ipcMain.on('execute-command', (_event, command, projectPath) => {
   
   jobPty.onData((data) => {
     win?.webContents.send('terminal:data', data);
+      if (data.includes("Started")){
+        win?.webContents.send('status-update', 'done');
+      }
+      if (containerIdRegex.test(data.trim()) && !data.includes("Error")) {
+        win?.webContents.send('status-update', 'done');
+      }
+      if (data.includes("http://localhost:")) {
+        win?.webContents.send('status-update', 'done');
+      }
   });
   
   jobPty.onExit(async ({ exitCode, signal }) => {
