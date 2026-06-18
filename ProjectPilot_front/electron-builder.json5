@@ -29,7 +29,9 @@
     "deleteAppDataOnUninstall": false
   },
   "linux": {
-    "target": ["AppImage", "snap"],
+    "target": ["AppImage", "snap", "deb"],
+    "maintainer": "billelz <billel.zemmel@hopeai.org>",
+    "category": "Development",
     "artifactName": "${productName}-Linux-${version}.${ext}",
     "extraResources": [{ "from": "backend/linux", "to": "backend" }]
   },
