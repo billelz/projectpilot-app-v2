@@ -272,7 +272,7 @@
             border-radius: 20px;
             padding: 40px;
             width: 90%;
-            max-width: 520px;
+            max-width: 760px;
             position: relative;
             box-shadow: 0 0 60px rgba(77, 166, 255, 0.15);
             animation: modalIn 0.25s ease;
@@ -314,16 +314,19 @@
 
         .os-cards {
             display: flex;
-            gap: 20px;
+            flex-wrap: wrap;
+            gap: 18px;
         }
 
         .os-card {
-            flex: 1;
+            flex: 1 1 150px;
+            min-width: 150px;
             display: flex;
             flex-direction: column;
             align-items: center;
+            justify-content: flex-start;
             gap: 14px;
-            padding: 28px 20px;
+            padding: 30px 18px;
             border: 1.5px solid rgba(77, 166, 255, 0.2);
             border-radius: 14px;
             background: rgba(77, 166, 255, 0.04);
@@ -348,11 +351,13 @@
         .os-card .os-name {
             font-size: 1.1rem;
             font-weight: 600;
+            text-align: center;
         }
 
         .os-card .os-detail {
             font-size: 0.8rem;
             color: #7a9ab5;
+            text-align: center;
         }
 
         @media (max-width: 480px) {
@@ -405,30 +410,34 @@
             <h2>Download ProjectPilot</h2>
             <p>Choose your operating system to download the installer.</p>
             <div class="os-cards">
-                <a href="https://github.com/billelz/projectpilot-app-v2/releases/latest/download/ProjectPilot-Linux.AppImage"
-                   class="os-card" download>
+                <div class="os-card" role="button" tabindex="0"
+                     data-url="https://github.com/billelz/projectpilot-app-v2/releases/latest/download/ProjectPilot-Linux.AppImage"
+                     onclick="downloadAsset(this)" onkeydown="cardKeydown(event, this)">
                     <i class="fab fa-linux"></i>
                     <span class="os-name">Linux</span>
                     <span class="os-detail">AppImage</span>
-                </a>
-                <a href="https://github.com/billelz/projectpilot-app-v2/releases/latest/download/ProjectPilot-Linux.snap"
-                   class="os-card" download>
+                </div>
+                <div class="os-card" role="button" tabindex="0"
+                     data-url="https://github.com/billelz/projectpilot-app-v2/releases/latest/download/ProjectPilot-Linux.snap"
+                     onclick="downloadAsset(this)" onkeydown="cardKeydown(event, this)">
                     <i class="fab fa-linux"></i>
                     <span class="os-name">Linux</span>
                     <span class="os-detail">Snap Package</span>
-                </a>
-                <a href="https://github.com/billelz/projectpilot-app-v2/releases/latest/download/ProjectPilot-Linux.deb"
-                   class="os-card" download>
+                </div>
+                <div class="os-card" role="button" tabindex="0"
+                     data-url="https://github.com/billelz/projectpilot-app-v2/releases/latest/download/ProjectPilot-Linux.deb"
+                     onclick="downloadAsset(this)" onkeydown="cardKeydown(event, this)">
                     <i class="fab fa-ubuntu"></i>
                     <span class="os-name">Debian / Ubuntu</span>
                     <span class="os-detail">.deb Package</span>
-                </a>
-                <a href="https://github.com/billelz/projectpilot-app-v2/releases/latest/download/ProjectPilot-Windows-Setup.exe"
-                   class="os-card" download>
+                </div>
+                <div class="os-card" role="button" tabindex="0"
+                     data-url="https://github.com/billelz/projectpilot-app-v2/releases/latest/download/ProjectPilot-Windows-Setup.exe"
+                     onclick="downloadAsset(this)" onkeydown="cardKeydown(event, this)">
                     <i class="fab fa-windows"></i>
                     <span class="os-name">Windows</span>
                     <span class="os-detail">NSIS Installer (.exe)</span>
-                </a>
+                </div>
             </div>
             <p class="install-note">
                 <strong>Linux note:</strong> The AppImage runs directly &mdash; just make it
@@ -442,6 +451,26 @@
     </div>
 
     <script>
+        // Trigger the download via a temporary anchor so the destination URL
+        // is never exposed in the browser's status bar on hover.
+        function downloadAsset(card) {
+            const url = card.dataset.url;
+            if (!url) return;
+            const a = document.createElement('a');
+            a.href = url;
+            a.setAttribute('download', '');
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        }
+
+        function cardKeydown(e, card) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                downloadAsset(card);
+            }
+        }
+
         function openDownloadModal() {
             document.getElementById('downloadModal').classList.add('active');
             document.body.style.overflow = 'hidden';
