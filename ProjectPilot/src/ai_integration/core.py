@@ -1,15 +1,48 @@
+import os
+import sys
 from pathlib import Path
 from groq import Groq
 from project_analyzer.models import ProjectInfo
-from .utils import get_system_info,safe_parse_ai_json, detect_compose_command,docker_exists,order_compose_files,extract_ports_from_compose,extract_ports_from_dockerfile,order_dockerfiles  
-from typing import Dict, Any, List
+from .utils import get_system_info,safe_parse_ai_json, detect_compose_command,docker_exists,order_compose_files,extract_ports_from_compose,extract_ports_from_dockerfile,order_dockerfiles
+from typing import Dict, Any, List, Optional
 from mcp.core import run_agent
 from dotenv import load_dotenv
-import os
-load_dotenv()
-groq_api_key = os.getenv("GROQ_API_KEY")
- 
-client = Groq(api_key=groq_api_key)
+
+
+def _load_environment() -> None:
+    """Load environment variables, including a .env bundled by PyInstaller.
+
+    When the backend is frozen into a single binary, PyInstaller extracts
+    bundled data files into ``sys._MEIPASS``. The CI build writes the Groq
+    API key into a ``.env`` there, so we must load it explicitly. In
+    development we also load any local ``.env`` from the working directory.
+    """
+    if getattr(sys, "frozen", False):
+        bundled_env = Path(getattr(sys, "_MEIPASS", "")) / ".env"
+        if bundled_env.exists():
+            load_dotenv(bundled_env)
+    load_dotenv()
+
+
+_load_environment()
+
+# The Groq client is created lazily so that a missing API key never crashes
+# the backend at import time (which would make the whole app "unreachable").
+_client: Optional[Groq] = None
+
+
+def get_client() -> Groq:
+    global _client
+    if _client is None:
+        api_key = os.getenv("GROQ_API_KEY")
+        if not api_key:
+            raise RuntimeError(
+                "GROQ_API_KEY is not configured. AI-powered features are unavailable."
+            )
+        _client = Groq(api_key=api_key)
+    return _client
+
+
 user_os = get_system_info()
 def readme_install_guide(info: ProjectInfo,mcp_client) -> Dict[str, Any]:
     user_input = f"""
@@ -37,7 +70,7 @@ Return format:
 
 """
     result = run_agent(
-        llm_client=client,
+        llm_client=get_client(),
         mcp_client=mcp_client,
         user_input=user_input
     )
@@ -77,7 +110,7 @@ Rules:
 - Commands must be executable
 """
 
-    response = client.chat.completions.create(
+    response = get_client().chat.completions.create(
         model="llama-3.1-8b-instant",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.2
@@ -244,7 +277,7 @@ VALIDATION
 - Do not return empty commands. If uncertain, still choose the most likely working commands based on files.
 """
     result = run_agent(
-        llm_client=client,
+        llm_client=get_client(),
         mcp_client=mcp_client,
         user_input=user_input,
         allowed_files=allowed_files
@@ -301,11 +334,10 @@ EXAMPLES:
 """
     
     print("[DEBUG] Prompt created, calling Groq API...")
-    print(f"[DEBUG] API Key (first 20 chars): {groq_api_key[:20]}...")
-    
+
     try:
         print("[DEBUG] Creating Groq completion...")
-        response = client.chat.completions.create(
+        response = get_client().chat.completions.create(
             model="llama-3.1-8b-instant",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.3

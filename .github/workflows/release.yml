@@ -27,10 +27,14 @@ jobs:
 
       - name: Build Python backend (Linux)
         working-directory: ProjectPilot
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: |
           pip install -r requirements.txt
           pip install pyinstaller
+          printf 'GROQ_API_KEY=%s\n' "$GROQ_API_KEY" > .env
           pyinstaller --onefile --name projectpilot-backend \
+            --add-data ".env:." \
             --collect-all uvicorn \
             --collect-all websockets \
             --hidden-import uvicorn.logging \
@@ -90,10 +94,14 @@ jobs:
 
       - name: Build Python backend (Windows)
         working-directory: ProjectPilot
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: |
           pip install -r requirements.txt
           pip install pyinstaller
+          "GROQ_API_KEY=$env:GROQ_API_KEY" | Out-File -FilePath .env -Encoding ascii
           pyinstaller --onefile --name projectpilot-backend `
+            --add-data ".env;." `
             --collect-all uvicorn `
             --collect-all websockets `
             --hidden-import uvicorn.logging `
