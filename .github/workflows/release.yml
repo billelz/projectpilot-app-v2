@@ -82,6 +82,13 @@ jobs:
           path: ProjectPilot_front/release/**/*.snap
           if-no-files-found: error
 
+      - name: Upload Linux Deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-deb
+          path: ProjectPilot_front/release/**/*.deb
+          if-no-files-found: error
+
   build-windows:
     runs-on: windows-latest
     steps:
@@ -155,6 +162,12 @@ jobs:
           name: linux-snap
           path: dist/snap
 
+      - name: Download Linux Deb
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-deb
+          path: dist/deb
+
       - name: Download Windows artifact
         uses: actions/download-artifact@v4
         with:
@@ -165,6 +178,7 @@ jobs:
         run: |
           find dist/linux  -name "*.AppImage" -exec mv {} dist/linux/ProjectPilot-Linux.AppImage \;
           find dist/snap   -name "*.snap"     -exec mv {} dist/snap/ProjectPilot-Linux.snap \;
+          find dist/deb    -name "*.deb"      -exec mv {} dist/deb/ProjectPilot-Linux.deb \;
           find dist/windows -name "*.exe"     -exec mv {} dist/windows/ProjectPilot-Windows-Setup.exe \;
 
       - name: Create GitHub Release
@@ -175,4 +189,5 @@ jobs:
           files: |
             dist/linux/ProjectPilot-Linux.AppImage
             dist/snap/ProjectPilot-Linux.snap
+            dist/deb/ProjectPilot-Linux.deb
             dist/windows/ProjectPilot-Windows-Setup.exe
