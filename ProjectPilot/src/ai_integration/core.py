@@ -2,10 +2,10 @@ import os
 import sys
 from pathlib import Path
 from groq import Groq
-from project_analyzer.models import ProjectInfo
+from src.project_analyzer.models import ProjectInfo
 from .utils import get_system_info,safe_parse_ai_json, detect_compose_command,docker_exists,order_compose_files,extract_ports_from_compose,extract_ports_from_dockerfile,order_dockerfiles
 from typing import Dict, Any, List, Optional
-from mcp.core import run_agent
+from src.mcp.core import run_agent
 from dotenv import load_dotenv
 
 
