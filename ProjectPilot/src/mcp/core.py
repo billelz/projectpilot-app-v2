@@ -1,5 +1,7 @@
 import subprocess
 import json
+import shutil
+from pathlib import Path
 
 MAX_TOOL_RESULT_CHARS = 1500   # hard cap per tool result
 MAX_HISTORY_MESSAGES = 6        # keep only the last N messages (sliding window)
@@ -8,14 +10,23 @@ MAX_HISTORY_MESSAGES = 6        # keep only the last N messages (sliding window)
 class MCPClient:
     def __init__(self, project_path: str):
         self.project_path = project_path
-        self.process = subprocess.Popen(
-            ["npx", "-y", "@modelcontextprotocol/server-filesystem", project_path],
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            bufsize=1
-        )
+        self.process = None
+        # The MCP filesystem server runs through ``npx`` (Node.js). Most end
+        # users — and confined/packaged environments — don't ship Node, so we
+        # fall back to reading files natively when it isn't available.
+        if shutil.which("npx"):
+            try:
+                self.process = subprocess.Popen(
+                    ["npx", "-y", "@modelcontextprotocol/server-filesystem", project_path],
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    bufsize=1
+                )
+            except Exception as e:
+                print(f"[MCP] Failed to start npx filesystem server, using native fallback: {e}")
+                self.process = None
 
     def send(self, payload: dict):
         self.process.stdin.write(json.dumps(payload) + "\n")
@@ -27,7 +38,21 @@ class MCPClient:
             if line.strip():
                 return json.loads(line)
 
+    def _native_read_file(self, arguments: dict) -> dict:
+        """Read a file directly, mirroring the MCP server response shape."""
+        path = arguments.get("path", "")
+        try:
+            text = Path(path).read_text(encoding="utf-8", errors="replace")
+        except Exception as e:
+            return {"result": {"content": [{"text": f"Error reading file: {e}"}]}}
+        return {"result": {"content": [{"text": text}]}}
+
     def call_tool(self, name: str, arguments: dict):
+        if self.process is None:
+            # Native fallback: only read_file is supported (matches run_agent).
+            if name == "read_file":
+                return self._native_read_file(arguments)
+            return {"result": {"content": [{"text": f"Error: tool '{name}' not available."}]}}
         request = {
             "jsonrpc": "2.0",
             "id": 1,
@@ -38,9 +63,11 @@ class MCPClient:
         return self.receive()
 
     def is_alive(self):
-        return self.process.poll() is None
+        return self.process is not None and self.process.poll() is None
 
     def init(self):
+        if self.process is None:
+            return
         self.send({
             "jsonrpc": "2.0",
             "id": 0,

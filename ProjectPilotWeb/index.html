@@ -405,25 +405,31 @@
             <h2>Download ProjectPilot</h2>
             <p>Choose your operating system to download the installer.</p>
             <div class="os-cards">
-                <a href="https://github.com/billelz/projectpilot/releases/latest/download/ProjectPilot-Linux.AppImage"
+                <a href="https://github.com/billelz/projectpilot-app-v2/releases/latest/download/ProjectPilot-Linux.AppImage"
                    class="os-card" download>
                     <i class="fab fa-linux"></i>
                     <span class="os-name">Linux</span>
                     <span class="os-detail">AppImage</span>
                 </a>
-                <a href="https://github.com/billelz/projectpilot/releases/latest/download/ProjectPilot-Linux.snap"
+                <a href="https://github.com/billelz/projectpilot-app-v2/releases/latest/download/ProjectPilot-Linux.snap"
                    class="os-card" download>
                     <i class="fab fa-linux"></i>
                     <span class="os-name">Linux</span>
                     <span class="os-detail">Snap Package</span>
                 </a>
-                <a href="https://github.com/billelz/projectpilot/releases/latest/download/ProjectPilot-Windows-Setup.exe"
+                <a href="https://github.com/billelz/projectpilot-app-v2/releases/latest/download/ProjectPilot-Windows-Setup.exe"
                    class="os-card" download>
                     <i class="fab fa-windows"></i>
                     <span class="os-name">Windows</span>
                     <span class="os-detail">NSIS Installer (.exe)</span>
                 </a>
             </div>
+            <p class="install-note">
+                <strong>Linux note:</strong> The AppImage runs directly &mdash; just make it
+                executable (<code>chmod +x ProjectPilot-Linux.AppImage</code>) and launch it.
+                The Snap is built with classic confinement, so install it with:
+                <code>sudo snap install --dangerous --classic ProjectPilot-Linux.snap</code>
+            </p>
         </div>
     </div>
 
