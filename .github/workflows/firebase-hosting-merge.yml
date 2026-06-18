@@ -1,0 +1,27 @@
+name: Deploy ProjectPilotWeb to Firebase Hosting
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'ProjectPilotWeb/**'
+      - '.github/workflows/firebase-hosting-merge.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_AIPROJECTPILOT }}
+          channelId: live
+          projectId: aiprojectpilot
+          # firebase.json lives in ProjectPilotWeb/, not the repo root.
+          entryPoint: ProjectPilotWeb
