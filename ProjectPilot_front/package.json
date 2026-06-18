@@ -2,6 +2,9 @@
   "name": "projectpilot",
   "private": true,
   "version": "0.0.0",
+  "description": "ProjectPilot — automatically analyze, set up, and run any project.",
+  "author": "billelz <billel.zemmel@hopeai.org>",
+  "homepage": "https://github.com/billelz/projectpilot-app-v2",
   "type": "module",
   "scripts": {
     "dev": "vite",
